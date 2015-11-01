@@ -433,15 +433,18 @@ var ReactCompositeComponentMixin = {
    * @private
    */
   _processProps: function(newProps) {
-    if (__DEV__) {
-      var Component = this._currentElement.type;
-      if (Component.propTypes) {
-        this._checkPropTypes(
-          Component.propTypes,
-          newProps,
-          ReactPropTypeLocations.prop
-        );
-      }
+    var Component = this._currentElement.type;
+    if (Component._processProps) {
+      return Component._processProps.call(
+        this._currentElement,
+        newProps
+      );
+    } else if (__DEV__ && Component.propTypes) {
+      this._checkPropTypes(
+        Component.propTypes,
+        newProps,
+        ReactPropTypeLocations.prop
+      );
     }
     return newProps;
   },
