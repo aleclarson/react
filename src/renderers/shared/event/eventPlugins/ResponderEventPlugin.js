@@ -501,7 +501,7 @@ function extractFinalEvent(
   nativeEvent,
   nativeEventTarget
 ) {
-  if (!responderInst || trackedTouchCount > 0) {
+  if (trackedTouchCount > 0) {
     return null;
   }
 
@@ -527,6 +527,20 @@ function extractFinalEvent(
   );
 
   finalEvent.touchHistory = ResponderTouchHistoryStore.touchHistory;
+
+  /**
+   * This hook does not care if 'responderInst' exists
+   * because it needs to be accessible by responders
+   * that are analyzing incremental touches to determine
+   * if they should return true inside 'onStartShouldSetResponderCapture'.
+   */
+  if (ResponderEventPlugin.onFinalTouch) {
+    ResponderEventPlugin.onFinalTouch(finalEvent);
+  }
+
+  if (!responderInst) {
+    return null;
+  }
 
   return finalEvent;
 }
@@ -638,6 +652,7 @@ var ResponderEventPlugin = {
     return extracted;
   },
 
+  onFinalTouch: null,
   GlobalResponderHandler: null,
   GlobalInteractionHandler: null,
 
