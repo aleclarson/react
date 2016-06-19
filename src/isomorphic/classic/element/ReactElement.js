@@ -100,7 +100,7 @@ var ReactElement = function(type, key, ref, self, source, owner, props) {
       element._self = self;
       element._source = source;
     }
-    Object.freeze(element.props);
+    // Object.freeze(element.props);
     Object.freeze(element);
   }
 
