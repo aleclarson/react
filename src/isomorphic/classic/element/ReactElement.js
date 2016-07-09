@@ -107,6 +107,8 @@ var ReactElement = function(type, key, ref, self, source, owner, props) {
   return element;
 };
 
+ReactElement.type = REACT_ELEMENT_TYPE;
+
 ReactElement.createElement = function(type, config, children) {
   var propName;
 
