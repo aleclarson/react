@@ -24,7 +24,6 @@ var ReactUpdateQueue = require('ReactUpdateQueue');
 var assign = require('Object.assign');
 var emptyObject = require('emptyObject');
 var invariant = require('invariant');
-var throwFailure = require('failure').throwFailure;
 var shouldUpdateReactComponent = require('shouldUpdateReactComponent');
 var warning = require('warning');
 
@@ -783,7 +782,9 @@ var ReactCompositeComponentMixin = {
       renderedComponent =
         this._renderValidatedComponentWithoutOwnerOrContext();
     } catch (error) {
-      throwFailure(error, { component: this });
+      GLOBAL.failedComponent = this;
+      console.warn(error.stack);
+      return false;
     } finally {
       ReactCurrentOwner.current = null;
     }
