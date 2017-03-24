@@ -18,6 +18,9 @@ const EventPluginUtils = require('EventPluginUtils');
 const ResponderCache = require('ResponderCache');
 const TouchHistory = require('TouchHistory');
 
+// Generic traversal used with `TouchList` instances (web only).
+const forEach = Function.call.bind(Array.prototype.forEach);
+
 export type Gesture = {
   target: number,
   touchMap: {[key:number]: Touch},
@@ -45,7 +48,7 @@ function targetChanged(topLevelType: string, oldTarget: any, newTarget: any): vo
     newGesture.touchHistory.recordTouchEvent(
       topLevelType, oldGesture.changedTouches
     );
-    oldGesture.changedTouches.forEach(touch => {
+    forEach(oldGesture.changedTouches, (touch) => {
       newGesture.changedTouches.push(touch);
     });
     for (let identifier in oldGesture.touchMap) {
@@ -69,7 +72,7 @@ function touchesChanged(topLevelType: string, nativeEvent: TouchEvent): Array<Ge
     gesture.changedTouches.length = 0;
   });
 
-  nativeEvent.changedTouches.forEach(touch => {
+  forEach(nativeEvent.changedTouches, (touch) => {
     const gesture = isStartish ?
       attachGesture(touch) :
       gesturesByTouch[touch.identifier];
@@ -84,7 +87,7 @@ function touchesChanged(topLevelType: string, nativeEvent: TouchEvent): Array<Ge
 
   // Detach ended touches from their gestures.
   if (isEndish) {
-    nativeEvent.changedTouches.forEach(touch => {
+    forEach(nativeEvent.changedTouches, (touch) => {
       const {identifier} = touch;
       const gesture = gesturesByTouch[identifier];
 

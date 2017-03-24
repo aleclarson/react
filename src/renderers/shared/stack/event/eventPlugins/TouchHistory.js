@@ -23,6 +23,9 @@ const {
   isStartish,
 } = EventPluginUtils;
 
+// Generic traversal used with `TouchList` instances (web only).
+const forEach = Function.call.bind(Array.prototype.forEach);
+
 export type Touch = {
   identifier: ?number,
   pageX: number,
@@ -70,15 +73,15 @@ class TouchHistory {
 
   recordTouchEvent(topLevelType: string, changedTouches: Array<Touch>): void {
     if (isMoveish(topLevelType)) {
-      changedTouches.forEach(touch => this._recordTouchMove(touch));
+      forEach(changedTouches, (touch) => this._recordTouchMove(touch));
     } else if (isStartish(topLevelType)) {
-      changedTouches.forEach(touch => this._recordTouchStart(touch));
+      forEach(changedTouches, (touch) => this._recordTouchStart(touch));
       if (this.numberActiveTouches === 1) {
         this.indexOfSingleActiveTouch =
           changedTouches[0].identifier;
       }
     } else if (isEndish(topLevelType)) {
-      changedTouches.forEach(touch => this._recordTouchEnd(touch));
+      forEach(changedTouches, (touch) => this._recordTouchEnd(touch));
       if (this.numberActiveTouches === 1) {
         for (let i = 0; i < this.touchBank.length; i++) {
           const touchTrackToCheck = this.touchBank[i];
