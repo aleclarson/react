@@ -167,10 +167,10 @@ var ReactElement = function(type, key, ref, self, source, owner, props) {
       element._self = self;
       element._source = source;
     }
-    if (Object.freeze) {
-      Object.freeze(element.props);
-      Object.freeze(element);
-    }
+    // if (Object.freeze) {
+    //   Object.freeze(element.props);
+    //   Object.freeze(element);
+    // }
   }
 
   return element;
@@ -220,11 +220,11 @@ ReactElement.createElement = function(type, config, children) {
     for (var i = 0; i < childrenLength; i++) {
       childArray[i] = arguments[i + 2];
     }
-    if (__DEV__) {
-      if (Object.freeze) {
-        Object.freeze(childArray);
-      }
-    }
+    // if (__DEV__) {
+    //   if (Object.freeze) {
+    //     Object.freeze(childArray);
+    //   }
+    // }
     props.children = childArray;
   }
 
