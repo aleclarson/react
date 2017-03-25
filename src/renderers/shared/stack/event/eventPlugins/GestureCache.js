@@ -34,13 +34,13 @@ const gesturesByTarget = {};
 
 function targetChanged(topLevelType: string, oldTarget: any, newTarget: any): void {
 
-  const oldTag = EventPluginUtils.getNodeFromInstance(oldTarget);
+  const oldTag = EventPluginUtils.getTagFromInstance(oldTarget);
   const oldGesture = gesturesByTarget[oldTag];
   if (!oldGesture) {
     return console.warn(`Invalid target has no gesture: ${oldTag}`);
   }
 
-  const newTag = EventPluginUtils.getNodeFromInstance(newTarget);
+  const newTag = EventPluginUtils.getTagFromInstance(newTarget);
   const newGesture = gesturesByTarget[newTag];
 
   // Move touch data from `oldGesture` to `newGesture`.
@@ -128,9 +128,12 @@ function attachGesture(touch: Touch): Gesture {
   // Using `findAncestor` means child responders cannot start
   // new gestures while a parent has an active gesture.
   const responderInst = ResponderCache.findAncestor(touch.target);
-  const target = responderInst ?
+  const targetNode =
+    responderInst ?
     EventPluginUtils.getNodeFromInstance(responderInst) :
     touch.target;
+
+  const target = EventPluginUtils.getTagFromNode(targetNode);
 
   // Use the same gesture between touches with the same target.
   let gesture = gesturesByTarget[target];

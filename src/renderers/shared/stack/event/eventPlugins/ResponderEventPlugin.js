@@ -584,7 +584,7 @@ var ResponderEventPlugin = {
     var extracted;
     changedGestures.forEach(gesture => {
       gesture.touches = Object.values(gesture.touchMap);
-      var targetInst = EventPluginUtils.getInstanceFromNode(gesture.target);
+      var targetInst = EventPluginUtils.getInstanceFromTag(gesture.target);
       var touchEvents = extractTouchEvents(
         topLevelType,
         targetInst,
