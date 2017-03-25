@@ -583,13 +583,26 @@ var ResponderEventPlugin = {
 
     var extracted;
     changedGestures.forEach(gesture => {
-      gesture.touches = Object.values(gesture.touchMap);
       var targetInst = EventPluginUtils.getInstanceFromTag(gesture.target);
+
+      // TODO: 'pageX' and 'pageY' may need to be computed for each gesture.
+      var event = {
+        target: gesture.target,
+        touchHistory: gesture.touchHistory,
+        changedTouches: gesture.changedTouches,
+        touches: Object.values(gesture.touchMap),
+      };
+      Object.getOwnPropertyNames(nativeEvent).forEach(name => {
+        if (!event.hasOwnProperty(name)) {
+          event[name] = nativeEvent[name];
+        }
+      });
+
       var touchEvents = extractTouchEvents(
         topLevelType,
         targetInst,
-        gesture,
-        gesture.target
+        event,
+        event.target
       );
       if (touchEvents) {
         extracted = accumulate(extracted, touchEvents);
