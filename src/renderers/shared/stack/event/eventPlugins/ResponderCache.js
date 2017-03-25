@@ -14,6 +14,7 @@
 const EventPluginUtils = require('EventPluginUtils');
 
 const emptyFunction = require('emptyFunction');
+const isNode = require('isNode');
 
 // Each active responder (by its react tag).
 const activeResponders = Object.create(null);
@@ -39,9 +40,12 @@ exports.onResponderEnd = function(responderInst) {
 };
 
 exports.findAncestor = function(targetInst) {
-  let parentInst = typeof targetInst === 'number' ?
-    EventPluginUtils.getInstanceFromNode(targetInst) :
-    targetInst;
+  let parentInst;
+  if (typeof targetInst === 'number' || isNode(targetInst)) {
+    parentInst = EventPluginUtils.getInstanceFromNode(targetInst);
+  } else {
+    parentInst = targetInst;
+  }
 
   while (parentInst != null) {
     let parentTag = EventPluginUtils.getNodeFromInstance(parentInst);
