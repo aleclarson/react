@@ -233,8 +233,21 @@ var EventPluginUtils = {
   getInstanceFromNode: function(node) {
     return ComponentTree.getInstanceFromNode(node);
   },
-  getNodeFromInstance: function(node) {
-    return ComponentTree.getNodeFromInstance(node);
+  getNodeFromInstance: function(inst) {
+    return ComponentTree.getNodeFromInstance(inst);
+  },
+  getTagFromNode: function(node) {
+    var inst = this.getInstanceFromNode(node);
+    return inst ? this.getTagFromInstance(inst) : null;
+  },
+  getTagFromInstance: function(inst) {
+    return ComponentTree.getTagFromInstance(inst);
+  },
+  getNodeFromTag: function(tag) {
+    return this.getNodeFromInstance(this.getInstanceFromTag(tag));
+  },
+  getInstanceFromTag: function(tag) {
+    return ComponentTree.getInstanceFromTag(tag);
   },
   isAncestor: function(a, b) {
     return TreeTraversal.isAncestor(a, b);

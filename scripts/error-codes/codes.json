@@ -144,5 +144,6 @@
   "142": "Expected onBeforeMountComponent() parent and onSetChildren() to be consistent (%s has parents %s and %s).",
   "143": "React.Children.only expected to receive a single React element child.",
   "144": "Item must have been set",
-  "145": "hostContainerInfo should be populated before getPublicInstance is called."
+  "145": "hostContainerInfo should be populated before getPublicInstance is called.",
+  "146": "All DOM nodes should have a tag."
 }

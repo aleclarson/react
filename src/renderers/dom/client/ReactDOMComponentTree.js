@@ -22,6 +22,8 @@ var Flags = ReactDOMComponentFlags;
 var internalInstanceKey =
   '__reactInternalInstance$' + Math.random().toString(36).slice(2);
 
+var instanceCache = {};
+
 /**
  * Check if a given node should be cached.
  */
@@ -57,11 +59,13 @@ function precacheNode(inst, node) {
   var hostInst = getRenderedHostOrTextFromComponent(inst);
   hostInst._hostNode = node;
   node[internalInstanceKey] = hostInst;
+  instanceCache[hostInst._rootNodeID] = hostInst;
 }
 
 function uncacheNode(inst) {
   var node = inst._hostNode;
   if (node) {
+    delete instanceCache[inst._rootNodeID];
     delete node[internalInstanceKey];
     inst._hostNode = null;
   }
@@ -193,10 +197,21 @@ function getNodeFromInstance(inst) {
   return inst._hostNode;
 }
 
+function getInstanceFromTag(tag) {
+  return instanceCache[tag] || null;
+}
+
+function getTagFromInstance(inst) {
+  invariant(inst._rootNodeID, 'All DOM nodes should have a tag.');
+  return inst._rootNodeID;
+}
+
 var ReactDOMComponentTree = {
   getClosestInstanceFromNode: getClosestInstanceFromNode,
   getInstanceFromNode: getInstanceFromNode,
   getNodeFromInstance: getNodeFromInstance,
+  getInstanceFromTag: getInstanceFromTag,
+  getTagFromInstance: getTagFromInstance,
   precacheChildNodes: precacheChildNodes,
   precacheNode: precacheNode,
   uncacheNode: uncacheNode,

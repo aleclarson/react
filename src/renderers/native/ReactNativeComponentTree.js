@@ -59,6 +59,8 @@ var ReactNativeComponentTree = {
   getClosestInstanceFromNode: getInstanceFromTag,
   getInstanceFromNode: getInstanceFromTag,
   getNodeFromInstance: getTagFromInstance,
+  getInstanceFromTag: getInstanceFromTag,
+  getTagFromInstance: getTagFromInstance,
   precacheNode: precacheNode,
   uncacheNode: uncacheNode,
 };
