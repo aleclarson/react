@@ -14,6 +14,7 @@
 var EventPluginUtils = require('EventPluginUtils');
 var EventPropagators = require('EventPropagators');
 var GestureCache = require('GestureCache');
+var GesturePropagators = require('GesturePropagators');
 var ResponderCache = require('ResponderCache');
 var ResponderSyntheticEvent = require('ResponderSyntheticEvent');
 
@@ -90,6 +91,9 @@ var eventTypes = {
       captured: 'onMoveShouldSetResponderCapture',
     },
   },
+
+  gestureStart: {registrationName: 'onGestureStart'},
+  gestureEnd: {registrationName: 'onGestureEnd'},
 
   /**
    * Direct responder events dispatched directly to responder. Do not bubble.
@@ -298,126 +302,90 @@ to return true:wantsResponderID|                            |
  * - `responderGrant/Reject`   (`EventPluginHub` dispatches as usual)
  */
 
-function setResponderAndExtractTransfer(
-  topLevelType,
-  targetInst,
-  nativeEvent,
-  nativeEventTarget
-) {
-  var shouldSetEventType =
-    isStartish(topLevelType) ? eventTypes.startShouldSetResponder :
-    isMoveish(topLevelType) ? eventTypes.moveShouldSetResponder :
-    topLevelType === 'topSelectionChange' ?
-      eventTypes.selectionChangeShouldSetResponder :
-    eventTypes.scrollShouldSetResponder;
-
-  // Active responders automatically capture touches inside descendants.
-  var responderInst = ResponderCache.findAncestor(targetInst);
-  if (responderInst && responderInst !== targetInst) {
-    GestureCache.targetChanged(
-      topLevelType,
-      targetInst,
-      responderInst
-    );
-  }
-
-  // TODO: stop one short of the current responder.
-  var bubbleShouldSetFrom = !responderInst ?
-    targetInst :
-    EventPluginUtils.getLowestCommonAncestor(responderInst, targetInst);
-
-  // When capturing/bubbling the "shouldSet" event, we want to skip the target
-  // (deepest ID) if it happens to be the current responder. The reasoning:
-  // It's strange to get an `onMoveShouldSetResponder` when you're *already*
-  // the responder.
-  var skipOverBubbleShouldSetFrom = bubbleShouldSetFrom === responderInst;
-  var shouldSetEvent = ResponderSyntheticEvent.getPooled(
-    shouldSetEventType,
-    bubbleShouldSetFrom,
+function createEvent(eventType, responderInst, nativeEvent) {
+  var event = ResponderSyntheticEvent.getPooled(
+    eventTypes[eventType],
+    responderInst,
     nativeEvent,
-    nativeEventTarget
+    nativeEvent.target
   );
-  shouldSetEvent.touchHistory = nativeEvent.touchHistory;
-  if (skipOverBubbleShouldSetFrom) {
-    EventPropagators.accumulateTwoPhaseDispatchesSkipTarget(shouldSetEvent);
-  } else {
-    EventPropagators.accumulateTwoPhaseDispatches(shouldSetEvent);
-  }
-  var wantsResponderInst = executeDispatchesInOrderStopAtTrue(shouldSetEvent);
-  if (!shouldSetEvent.isPersistent()) {
-    shouldSetEvent.constructor.release(shouldSetEvent);
+  event.touchHistory = nativeEvent.touchHistory;
+  return event;
+}
+
+function setResponderAndExtractTransfer(topLevelType, targetInst, nativeEvent) {
+
+  // Active responders always capture touches within descendants.
+  var currentInst = ResponderCache.findAncestor(targetInst);
+  if (currentInst && currentInst !== targetInst) {
+    GestureCache.targetChanged(topLevelType, targetInst, currentInst);
+    targetInst = currentInst;
   }
 
-  if (!wantsResponderInst || wantsResponderInst === responderInst) {
+  var eventType =
+    isStartish(topLevelType) ? 'startShouldSetResponder' :
+    isMoveish(topLevelType) ? 'moveShouldSetResponder' :
+    topLevelType === 'topSelectionChange' ?
+      'selectionChangeShouldSetResponder' :
+    'scrollShouldSetResponder';
+
+  var event = createEvent(eventType, targetInst, nativeEvent);
+
+  // Always skip the current responder.
+  if (currentInst) {
+    EventPropagators.accumulateTwoPhaseDispatchesSkipTarget(event);
+  } else {
+    EventPropagators.accumulateTwoPhaseDispatches(event);
+  }
+
+  // Perform capturing/bubbling to determine the next responder.
+  var nextInst = executeDispatchesInOrderStopAtTrue(event);
+  event.isPersistent() || event.constructor.release(event);
+  if (!nextInst) {
     return null;
   }
+
+  // Accumulate events that need dispatching.
   var extracted;
 
-  if (responderInst) {
-    var terminationRequestEvent = ResponderSyntheticEvent.getPooled(
-      eventTypes.responderTerminationRequest,
-      responderInst,
-      nativeEvent,
-      nativeEventTarget
-    );
-    terminationRequestEvent.touchHistory = nativeEvent.touchHistory;
-    EventPropagators.accumulateDirectDispatches(terminationRequestEvent);
-    var shouldSwitch = !hasDispatches(terminationRequestEvent) ||
-      executeDirectDispatch(terminationRequestEvent);
-    if (!terminationRequestEvent.isPersistent()) {
-      terminationRequestEvent.constructor.release(terminationRequestEvent);
-    }
+  // Perform a termination request if an active responder exists.
+  if (currentInst) {
+    event = createEvent('responderTerminationRequest', currentInst, nativeEvent);
+    EventPropagators.accumulateDirectDispatches(event);
 
+    var shouldSwitch = !hasDispatches(event) || executeDirectDispatch(event);
+    event.isPersistent() || event.constructor.release(event);
+
+    // The active responder rejected the termination request.
     if (!shouldSwitch) {
-      var rejectEvent = ResponderSyntheticEvent.getPooled(
-        eventTypes.responderReject,
-        wantsResponderInst,
-        nativeEvent,
-        nativeEventTarget
-      );
-      rejectEvent.touchHistory = nativeEvent.touchHistory;
-      EventPropagators.accumulateDirectDispatches(rejectEvent);
-      return accumulate(extracted, rejectEvent);
+      event = createEvent('responderReject', nextInst, nativeEvent);
+      EventPropagators.accumulateDirectDispatches(event);
+      return accumulate(extracted, event);
     }
 
-    var terminateEvent = ResponderSyntheticEvent.getPooled(
-      eventTypes.responderTerminate,
-      responderInst,
-      nativeEvent,
-      nativeEventTarget
-    );
-    terminateEvent.touchHistory = nativeEvent.touchHistory;
-    EventPropagators.accumulateDirectDispatches(terminateEvent);
-    extracted = accumulate(extracted, terminateEvent);
+    // The previous responder has been terminated.
+    ResponderCache.release(currentInst);
 
-    // Always dispatch 'terminateEvent' before 'grantEvent'.
-    if (hasDispatches(terminateEvent)) {
-      executeDirectDispatch(terminateEvent);
-    }
+    event = createEvent('responderTerminate', currentInst, nativeEvent);
+    EventPropagators.accumulateDirectDispatches(event);
+    hasDispatches(event) && executeDirectDispatch(event);
   }
 
-  // Transfer gesture to next responder.
-  if (responderInst || targetInst !== wantsResponderInst) {
-    GestureCache.targetChanged(
-      topLevelType,
-      responderInst || targetInst,
-      wantsResponderInst
-    );
+  if (nextInst !== targetInst) {
+    event = createEvent('gestureEnd', nextInst, nativeEvent);
+    GesturePropagators.accumulateDescendantDispatches(targetInst, nextInst, event);
+    extracted = accumulate(extracted, event);
+
+    // The capturing responder becomes the new target.
+    GestureCache.targetChanged(topLevelType, targetInst, nextInst);
   }
 
-  var grantEvent = ResponderSyntheticEvent.getPooled(
-    eventTypes.responderGrant,
-    wantsResponderInst,
-    nativeEvent,
-    nativeEventTarget
-  );
-  grantEvent.touchHistory = nativeEvent.touchHistory;
-  EventPropagators.accumulateDirectDispatches(grantEvent);
-  extracted = accumulate(extracted, grantEvent);
+  event = createEvent('responderGrant', nextInst, nativeEvent);
+  EventPropagators.accumulateDirectDispatches(event);
 
-  var blockHostResponder = executeDirectDispatch(grantEvent) === true;
-  responderInst && ResponderCache.onResponderEnd(responderInst);
-  ResponderCache.onResponderGrant(wantsResponderInst, blockHostResponder);
+  var blockHostResponder = executeDirectDispatch(event) === true;
+  ResponderCache.grant(nextInst, blockHostResponder);
+
   return extracted;
 }
 
@@ -443,103 +411,53 @@ function canTriggerTransfer(topLevelType, topLevelInst, nativeEvent) {
   );
 }
 
-function extractTouchEvents(
-  topLevelType,
-  targetInst,
-  nativeEvent,
-  nativeEventTarget
-) {
+function extractTouchEvents(topLevelType, targetInst, nativeEvent) {
   var extracted;
 
   if (canTriggerTransfer(topLevelType, targetInst, nativeEvent)) {
     extracted = setResponderAndExtractTransfer(
       topLevelType,
       targetInst,
-      nativeEvent,
-      nativeEventTarget
+      nativeEvent
     );
   }
 
   // Find the first ancestor that is currently responding.
-  var responderInst = ResponderCache.findAncestor(targetInst);
-  if (responderInst) {
-    nativeEventTarget = EventPluginUtils.getTagFromInstance(responderInst);
+  var currentInst = ResponderCache.findAncestor(targetInst);
+  if (!currentInst) {
+    return extracted;
   }
 
-  /**
-   * Responder may or may not have transferred on a new touch start/move.
-   * Regardless, whoever is the responder after any potential transfer, we
-   * direct all touch start/move/ends to them in the form of
-   * `onResponderMove/Start/End`. These will be called for *every* additional
-   * finger that move/start/end, dispatched directly to whoever is the
-   * current responder at that moment, until the responder is "released".
-   *
-   * These multiple individual change touch events are are always bookended
-   * by `onResponderGrant`, and one of
-   * (`onResponderRelease/onResponderTerminate`).
-   */
-  var isResponderTouchStart = responderInst && isStartish(topLevelType);
-  var isResponderTouchMove = responderInst && isMoveish(topLevelType);
-  var isResponderTouchEnd = responderInst && isEndish(topLevelType);
-  var incrementalTouch =
-    isResponderTouchStart ? eventTypes.responderStart :
-    isResponderTouchMove ? eventTypes.responderMove :
-    isResponderTouchEnd ? eventTypes.responderEnd :
+  var eventType =
+    isStartish(topLevelType) ? 'responderStart' :
+    isMoveish(topLevelType) ? 'responderMove' :
+    isEndish(topLevelType) ? 'responderEnd' :
     null;
 
-  var touchHandler = ResponderEventPlugin.GlobalTouchHandler;
-  if (touchHandler && isEndish(topLevelType)) {
-    var endishEvent =
-      ResponderSyntheticEvent.getPooled(
-        eventTypes.responderEnd,
-        responderInst || targetInst,
-        nativeEvent,
-        nativeEventTarget
-      );
-    endishEvent.touchHistory = nativeEvent.touchHistory;
-    touchHandler.onTouchEnd(endishEvent);
+  // Extract an incremental touch event.
+  if (eventType) {
+    var event = createEvent(eventType, currentInst, nativeEvent);
+    EventPropagators.accumulateDirectDispatches(event);
+    extracted = accumulate(extracted, event);
   }
 
-  if (incrementalTouch) {
-    var touchEvent =
-      ResponderSyntheticEvent.getPooled(
-        incrementalTouch,
-        responderInst,
-        nativeEvent,
-        nativeEventTarget
-      );
-    touchEvent.touchHistory = nativeEvent.touchHistory;
-    EventPropagators.accumulateDirectDispatches(touchEvent);
-    extracted = accumulate(extracted, touchEvent);
+  if (!isEndish(topLevelType)) {
+    return extracted;
   }
 
-  var isResponderTerminate =
-    responderInst &&
-    topLevelType === 'topTouchCancel';
-  var isResponderRelease =
-    responderInst &&
-    !isResponderTerminate &&
-    isEndish(topLevelType) &&
-    nativeEvent.touchHistory.numberActiveTouches === 0;
-  var finalTouch =
-    isResponderTerminate ? eventTypes.responderTerminate :
-    isResponderRelease ? eventTypes.responderRelease :
-    null;
-  if (finalTouch) {
-    ResponderCache.onResponderEnd(responderInst);
-    var finalEvent =
-      ResponderSyntheticEvent.getPooled(
-        finalTouch,
-        responderInst,
-        nativeEvent,
-        nativeEventTarget
-      );
-    finalEvent.touchHistory = nativeEvent.touchHistory;
-    EventPropagators.accumulateDirectDispatches(finalEvent);
-    extracted = accumulate(extracted, finalEvent);
+  if (topLevelType === 'topTouchCancel') {
+    eventType = 'responderTerminate';
+  } else if (nativeEvent.touchHistory.numberActiveTouches === 0) {
+    eventType = 'responderRelease';
+  } else {
+    return extracted;
   }
 
-  return extracted;
+  ResponderCache.release(currentInst);
+
+  event = createEvent(eventType, currentInst, nativeEvent);
+  EventPropagators.accumulateDirectDispatches(event);
+  return accumulate(extracted, event);
 }
 
 var ResponderEventPlugin = {
@@ -556,13 +474,11 @@ var ResponderEventPlugin = {
    * `touchEnd`. On certain platforms, this means that a native scroll has
    * assumed control and the original touch targets are destroyed.
    */
-  extractEvents: function(
-    topLevelType,
-    targetInst,
-    nativeEvent,
-    nativeEventTarget
-  ) {
+  extractEvents: function(topLevelType, targetInst, nativeEvent) {
+
+    // Currently, only touch events are extracted.
     if (!nativeEvent.touches) {
+      console.warn('Native event has no touches: ' + topLevelType);
       return null;
     }
 
@@ -578,34 +494,32 @@ var ResponderEventPlugin = {
       }
     }
 
-    // Touches are grouped by active target.
-    var changedGestures = GestureCache.touchesChanged(topLevelType, nativeEvent);
-
+    // Accumulate events that need dispatching.
     var extracted;
-    changedGestures.forEach(gesture => {
-      var targetInst = EventPluginUtils.getInstanceFromTag(gesture.target);
 
-      // TODO: 'pageX' and 'pageY' may need to be computed for each gesture.
-      var event = {
-        target: gesture.target,
-        touchHistory: gesture.touchHistory,
-        changedTouches: gesture.changedTouches,
-        touches: Object.values(gesture.touchMap),
-      };
-      Object.getOwnPropertyNames(nativeEvent).forEach(name => {
-        if (!event.hasOwnProperty(name)) {
-          event[name] = nativeEvent[name];
-        }
-      });
+    // Touches are grouped by current target.
+    GestureCache.touchesChanged(topLevelType, nativeEvent).forEach(event => {
+      var targetInst = EventPluginUtils.getInstanceFromTag(event.target);
 
-      var touchEvents = extractTouchEvents(
-        topLevelType,
-        targetInst,
-        event,
-        event.target
-      );
+      // Dispatch a `gestureStart` event to every potential responder.
+      if (isStartish(topLevelType) && event.touches.length === event.changedTouches.length) {
+        var startEvent = createEvent('gestureStart', targetInst, event);
+        GesturePropagators.accumulateStartDispatches(targetInst, startEvent);
+        EventPluginUtils.executeDispatchesInOrder(startEvent, false);
+        startEvent.isPersistent() || startEvent.constructor.release(startEvent);
+      }
+
+      var touchEvents = extractTouchEvents(topLevelType, targetInst, event);
       if (touchEvents) {
         extracted = accumulate(extracted, touchEvents);
+      }
+
+      // Dispatch a `gestureEnd` event to every responder that needs it.
+      // Start from the bottom and skip descendants of the current responder.
+      if (isEndish(topLevelType) && event.touches.length === 0) {
+        var endEvent = createEvent('gestureEnd', targetInst, event);
+        GesturePropagators.accumulateEndDispatches(targetInst, endEvent);
+        extracted = accumulate(extracted, endEvent);
       }
     });
 
@@ -618,18 +532,9 @@ var ResponderEventPlugin = {
     return extracted;
   },
 
-  GlobalTouchHandler: null,
   GlobalInteractionHandler: null,
 
   injection: {
-    /**
-     * @param {onTouchEnd: (TouchEvent) => void} GlobalTouchHandler
-     * Object that handles all touch events.
-     */
-    injectGlobalTouchHandler:function(GlobalTouchHandler) {
-      ResponderEventPlugin.GlobalTouchHandler = GlobalTouchHandler;
-    },
-
     /**
      * @param {{onChange: (ReactID, ReactID) => void} GlobalResponderHandler
      * Object that handles any change in responder. Use this to inject

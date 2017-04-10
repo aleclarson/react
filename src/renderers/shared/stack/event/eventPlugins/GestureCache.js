@@ -97,29 +97,45 @@ function touchesChanged(topLevelType: string, nativeEvent: TouchEvent): Array<Ge
     });
   }
 
-  // Gather all gestures with at least one changed touch.
-  // Ended gestures are removed from `activeGestures` while
-  // looping, causing a shift in `activeGestures.length`.
-  // Thus, we must start from the end of `activeGestures`.
-  const changedGestures = [];
+  // Create an event for every changed gesture.
+  const events = [];
+
+  // We must start from the end of `activeGestures`
+  // because ended gestures are removed while looping.
   for (let i = activeGestures.length - 1; i >= 0; i--) {
-    let gesture = activeGestures[i];
+    const gesture = activeGestures[i];
     if (!gesture.changedTouches.length) {
       continue;
     }
-    changedGestures.push(gesture);
 
     // Update the touch history of every gesture with changed touches.
     gesture.touchHistory.recordTouchEvent(
       topLevelType, gesture.changedTouches
     );
 
+    // TODO: 'pageX' and 'pageY' may need to be computed for each gesture.
+    const event = {
+      target: gesture.target,
+      touchHistory: gesture.touchHistory,
+      changedTouches: gesture.changedTouches,
+      touches: Object.values(gesture.touchMap),
+    };
+    events.push(event);
+
+    // Copy properties from the original `nativeEvent`.
+    Object.getOwnPropertyNames(nativeEvent).forEach(name => {
+      if (!event.hasOwnProperty(name)) {
+        event[name] = nativeEvent[name];
+      }
+    });
+
     // When a gesture has no touches, remove it from the cache.
     if (isEndish && gesture.touchHistory.numberActiveTouches === 0) {
       removeGesture(gesture);
     }
   }
-  return changedGestures;
+
+  return events;
 }
 
 // Attach a gesture to a touch. Create a gesture if necessary.

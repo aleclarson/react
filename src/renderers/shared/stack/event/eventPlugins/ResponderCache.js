@@ -17,43 +17,45 @@ const emptyFunction = require('emptyFunction');
 const isNode = require('isNode');
 
 // Each active responder (by its react tag).
-const activeResponders = Object.create(null);
+const cache = Object.create(null);
 
 // Set this to handle responder grant/release/terminate events.
 exports.globalHandler = {onChange: emptyFunction};
 
-exports.hasResponder = function(responderInst) {
-  const nodeTag = EventPluginUtils.getNodeFromInstance(responderInst);
-  return activeResponders[nodeTag] != null;
+// Called when a responder becomes active.
+exports.grant = function(inst, blockHostResponder) {
+  const tag = EventPluginUtils.getTagFromInstance(inst);
+  cache[tag] = inst;
+
+  this.globalHandler.onChange(null, inst, blockHostResponder);
 };
 
-exports.onResponderGrant = function(responderInst, blockHostResponder) {
-  const nodeTag = EventPluginUtils.getNodeFromInstance(responderInst);
-  activeResponders[nodeTag] = responderInst;
-  this.globalHandler.onChange(null, responderInst, blockHostResponder);
+// Called when a responder becomes inactive.
+exports.release = function(inst) {
+  const tag = EventPluginUtils.getTagFromInstance(inst);
+  delete cache[tag];
+
+  this.globalHandler.onChange(inst, null);
 };
 
-exports.onResponderEnd = function(responderInst) {
-  const nodeTag = EventPluginUtils.getNodeFromInstance(responderInst);
-  delete activeResponders[nodeTag];
-  this.globalHandler.onChange(responderInst, null);
-};
-
-exports.findAncestor = function(targetInst) {
-  let parentInst;
-  if (typeof targetInst === 'number' || isNode(targetInst)) {
-    parentInst = EventPluginUtils.getInstanceFromNode(targetInst);
-  } else {
-    parentInst = targetInst;
+// Finds an active responder nearest to `target`.
+// May return the `target` itself.
+exports.findAncestor = function(target) {
+  let inst = resolveInstance(target);
+  while (inst != null) {
+    let tag = EventPluginUtils.getTagFromInstance(inst);
+    if (cache[tag] != null) return inst;
+    inst = EventPluginUtils.getParentInstance(inst);
   }
-
-  while (parentInst != null) {
-    let parentTag = EventPluginUtils.getNodeFromInstance(parentInst);
-    if (activeResponders[parentTag]) {
-      return activeResponders[parentTag];
-    }
-    parentInst = EventPluginUtils.getParentInstance(parentInst);
-  }
-
   return null;
 };
+
+function resolveInstance(target) {
+  if (typeof target === 'number') {
+    return EventPluginUtils.getInstanceFromTag(target);
+  }
+  if (isNode(target)) {
+    return EventPluginUtils.getInstanceFromNode(target);
+  }
+  return target;
+}
