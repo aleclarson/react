@@ -24,16 +24,12 @@ var ReactEventEmitterMixin = {
    * Streams a fired top-level event to `EventPluginHub` where plugins have the
    * opportunity to create `ReactEvent`s to be dispatched.
    */
-  handleTopLevel: function(
-      topLevelType,
-      targetInst,
-      nativeEvent,
-      nativeEventTarget) {
+  handleTopLevel: function(topLevelType, targetInst, nativeEvent) {
     var events = EventPluginHub.extractEvents(
       topLevelType,
       targetInst,
       nativeEvent,
-      nativeEventTarget
+      nativeEvent.target
     );
     runEventQueueInBatch(events);
   },

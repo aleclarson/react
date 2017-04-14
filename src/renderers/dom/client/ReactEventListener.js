@@ -56,28 +56,30 @@ PooledClass.addPoolingTo(
 );
 
 function handleTopLevelImpl(bookKeeping) {
-  var nativeEventTarget = getEventTarget(bookKeeping.nativeEvent);
-  var targetInst = ReactDOMComponentTree.getClosestInstanceFromNode(
-    nativeEventTarget
-  );
+  var nativeEvent = bookKeeping.nativeEvent;
+  Object.defineProperty(nativeEvent, 'target', {
+    value: getEventTarget(nativeEvent),
+    enumerable: true,
+  });
 
   // Loop through the hierarchy, in case there's any nested components.
   // It's important that we build the array of ancestors before calling any
   // event handlers, because event handlers can modify the DOM, leading to
   // inconsistencies with ReactMount's node cache. See #1105.
-  var ancestor = targetInst;
+  var ancestors = bookKeeping.ancestors;
+  var ancestor =
+    ReactDOMComponentTree.getClosestInstanceFromNode(nativeEvent.target);
   do {
-    bookKeeping.ancestors.push(ancestor);
+    ancestors.push(ancestor);
     ancestor = ancestor && findParent(ancestor);
   } while (ancestor);
 
-  for (var i = 0; i < bookKeeping.ancestors.length; i++) {
-    targetInst = bookKeeping.ancestors[i];
+  var topLevelType = bookKeeping.topLevelType;
+  for (var i = 0; i < ancestors.length; i++) {
     ReactEventListener._handleTopLevel(
-      bookKeeping.topLevelType,
-      targetInst,
-      bookKeeping.nativeEvent,
-      getEventTarget(bookKeeping.nativeEvent)
+      topLevelType,
+      ancestors[i],
+      nativeEvent
     );
   }
 }
