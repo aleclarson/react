@@ -121,8 +121,8 @@ class TouchHistory {
       touchRecord.previousPageX = touchRecord.currentPageX;
       touchRecord.previousPageY = touchRecord.currentPageY;
       touchRecord.previousTimeStamp = touchRecord.currentTimeStamp;
-      touchRecord.currentPageX = touch.pageX;
-      touchRecord.currentPageY = touch.pageY;
+      touchRecord.currentPageX = touch.clientX;
+      touchRecord.currentPageY = touch.clientY;
       touchRecord.currentTimeStamp = timestampForTouch(touch);
       this.mostRecentTimeStamp = timestampForTouch(touch);
     } else {
@@ -144,8 +144,8 @@ class TouchHistory {
       touchRecord.previousPageX = touchRecord.currentPageX;
       touchRecord.previousPageY = touchRecord.currentPageY;
       touchRecord.previousTimeStamp = touchRecord.currentTimeStamp;
-      touchRecord.currentPageX = touch.pageX;
-      touchRecord.currentPageY = touch.pageY;
+      touchRecord.currentPageX = touch.clientX;
+      touchRecord.currentPageY = touch.clientY;
       touchRecord.currentTimeStamp = timestampForTouch(touch);
       this.mostRecentTimeStamp = timestampForTouch(touch);
     } else {
@@ -184,8 +184,8 @@ function getTouchIdentifier({identifier}: Touch): number {
 function printTouch(touch: Touch): string {
   return JSON.stringify({
     identifier: touch.identifier,
-    pageX: touch.pageX,
-    pageY: touch.pageY,
+    pageX: touch.clientX,
+    pageY: touch.clientY,
     timestamp: timestampForTouch(touch),
   });
 }
@@ -205,27 +205,27 @@ function printTouchBank(touchBank: TouchBank): string {
 function createTouchRecord(touch: Touch): TouchRecord {
   return {
     touchActive: true,
-    startPageX: touch.pageX,
-    startPageY: touch.pageY,
+    startPageX: touch.clientX,
+    startPageY: touch.clientY,
     startTimeStamp: timestampForTouch(touch),
-    currentPageX: touch.pageX,
-    currentPageY: touch.pageY,
+    currentPageX: touch.clientX,
+    currentPageY: touch.clientY,
     currentTimeStamp: timestampForTouch(touch),
-    previousPageX: touch.pageX,
-    previousPageY: touch.pageY,
+    previousPageX: touch.clientX,
+    previousPageY: touch.clientY,
     previousTimeStamp: timestampForTouch(touch),
   };
 }
 
 function resetTouchRecord(touchRecord: TouchRecord, touch: Touch): void {
   touchRecord.touchActive = true;
-  touchRecord.startPageX = touch.pageX;
-  touchRecord.startPageY = touch.pageY;
+  touchRecord.startPageX = touch.clientX;
+  touchRecord.startPageY = touch.clientY;
   touchRecord.startTimeStamp = timestampForTouch(touch);
-  touchRecord.currentPageX = touch.pageX;
-  touchRecord.currentPageY = touch.pageY;
+  touchRecord.currentPageX = touch.clientX;
+  touchRecord.currentPageY = touch.clientY;
   touchRecord.currentTimeStamp = timestampForTouch(touch);
-  touchRecord.previousPageX = touch.pageX;
-  touchRecord.previousPageY = touch.pageY;
+  touchRecord.previousPageX = touch.clientX;
+  touchRecord.previousPageY = touch.clientY;
   touchRecord.previousTimeStamp = timestampForTouch(touch);
 }
