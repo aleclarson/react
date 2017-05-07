@@ -77,6 +77,11 @@ function touchesChanged(topLevelType: string, nativeEvent: TouchEvent): Array<Ge
       attachGesture(touch) :
       gesturesByTouch[touch.identifier];
 
+    if (!gesture) {
+      const target = EventPluginUtils.getTagFromInstance(touch.target);
+      return console.warn(`Missing gesture for touch: (id = ${touch.identifier}, target = ${target})`);
+    }
+
     gesture.changedTouches.push(touch);
 
     if (!isEndish) {
