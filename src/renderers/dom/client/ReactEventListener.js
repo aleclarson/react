@@ -82,6 +82,9 @@ function handleTopLevelImpl(bookKeeping) {
       nativeEvent
     );
   }
+
+  // Prevent events from bubbling out of the container.
+  nativeEvent.stopPropagation();
 }
 
 function scrollValueMonitor(cb) {
