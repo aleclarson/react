@@ -476,9 +476,8 @@ var ResponderEventPlugin = {
    */
   extractEvents: function(topLevelType, targetInst, nativeEvent) {
 
-    // Currently, only touch events are extracted.
+    // Only extract touch events.
     if (!nativeEvent.touches) {
-      console.warn('Native event has no touches: ' + topLevelType);
       return null;
     }
 
