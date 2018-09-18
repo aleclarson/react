@@ -17,8 +17,8 @@
   "dependencies": {
     "object-assign": "^4.1.1",
     "prop-types": "^15.6.2",
-    "react-is": "^16.5.1",
-    "schedule": "^0.4.0"
+    "react-is": "file:../react-is",
+    "schedule": "file:../schedule"
   },
   "peerDependencies": {
     "react": "^16.0.0"

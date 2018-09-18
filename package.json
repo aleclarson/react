@@ -4,6 +4,9 @@
   "workspaces": [
     "packages/*"
   ],
+  "dependencies": {
+    "shared": "file:./packages/shared"
+  },
   "devDependencies": {
     "art": "^0.10.1",
     "babel-cli": "^6.6.5",
