@@ -10,6 +10,7 @@
 const ReactNativeEventPluginOrder = [
   'ResponderEventPlugin',
   'ReactNativeBridgeEventPlugin',
+  'EnterLeaveEventPlugin',
 ];
 
 export default ReactNativeEventPluginOrder;

@@ -19,6 +19,7 @@ import 'react-native/Libraries/ReactPrivate/ReactNativePrivateInitializeCore';
 import {injection as EventPluginHubInjection} from 'events/EventPluginHub';
 import ResponderEventPlugin from 'events/ResponderEventPlugin';
 
+import EnterLeaveEventPlugin from './EnterLeaveEventPlugin';
 import ReactNativeBridgeEventPlugin from './ReactNativeBridgeEventPlugin';
 import ReactNativeEventPluginOrder from './ReactNativeEventPluginOrder';
 
@@ -34,4 +35,5 @@ EventPluginHubInjection.injectEventPluginOrder(ReactNativeEventPluginOrder);
 EventPluginHubInjection.injectEventPluginsByName({
   ResponderEventPlugin: ResponderEventPlugin,
   ReactNativeBridgeEventPlugin: ReactNativeBridgeEventPlugin,
+  EnterLeaveEventPlugin: EnterLeaveEventPlugin,
 });
